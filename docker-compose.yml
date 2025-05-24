@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  email-monitor:
+    build: .
+    container_name: email-monitor
+    restart: unless-stopped
+    environment:
+      # SMTP Configuration
+      SMTP_HOST: "smtp.gmail.com"
+      SMTP_PORT: "587"
+      SMTP_SECURE: "false"
+      SMTP_USER: "your-smtp-username@gmail.com"
+      SMTP_PASSWORD: "your-smtp-app-password"
+      SMTP_REJECT_UNAUTHORIZED: "true"
+      
+      # Mail Configuration
+      MAIL_PROTOCOL: "imap"
+      MAIL_HOST: "imap.gmail.com"
+      MAIL_PORT: "993"
+      MAIL_TLS: "true"
+      MAIL_USER: "your-imap-username@gmail.com"
+      MAIL_PASSWORD: "your-imap-app-password"
+      MAIL_REJECT_UNAUTHORIZED: "true"
+      MAIL_FROM: "your-smtp-username@gmail.com"
+      MAIL_TO: "your-imap-username@gmail.com"
+      
+      # Uptime Kuma Configuration
+      KUMA_ENABLED: "true"
+      KUMA_SERVER: "https://your-uptime-kuma-server.com"
+      KUMA_IDENTIFIER: "your-push-monitor-id"
+      KUMA_TIMEOUT: "10000"
+      KUMA_RETRIES: "3"
+      
+      # Monitoring Configuration
+      SEND_INTERVAL: "5"
+      RECEIVE_TIMEOUT: "1"
+      RETRIES: "3"
+      
+      # Health Check Configuration
+      HEALTH_CHECK_ENABLED: "true"
+      HEALTH_CHECK_PORT: "3000"
+      
+      # Timezone
+      TZ: "UTC"
+    
+    volumes:
+      - email-monitor-config:/app/config
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  email-monitor-config:

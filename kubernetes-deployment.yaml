@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: email-monitor-config
+  namespace: monitoring
+data:
+  # Default configuration (will be overridden by environment variables)
+  config.json: |
+    {
+      "sendInterval": 5,
+      "receiveTimeout": 1,
+      "retries": 3,
+      "healthCheck": {
+        "enabled": true,
+        "port": 3000
+      }
+    }
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: email-monitor-secrets
+  namespace: monitoring
+type: Opaque
+stringData:
+  SMTP_PASSWORD: "your-smtp-app-password"
+  MAIL_PASSWORD: "your-imap-app-password"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email-monitor
+  namespace: monitoring
+  labels:
+    app: email-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: email-monitor
+  template:
+    metadata:
+      labels:
+        app: email-monitor
+    spec:
+      containers:
+      - name: email-monitor
+        image: email-monitor:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        # SMTP Configuration
+        - name: SMTP_HOST
+          value: "smtp.gmail.com"
+        - name: SMTP_PORT
+          value: "587"
+        - name: SMTP_SECURE
+          value: "false"
+        - name: SMTP_USER
+          value: "your-smtp-username@gmail.com"
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: email-monitor-secrets
+              key: SMTP_PASSWORD
+        - name: SMTP_REJECT_UNAUTHORIZED
+          value: "true"
+        
+        # Mail Configuration
+        - name: MAIL_PROTOCOL
+          value: "imap"
+        - name: MAIL_HOST
+          value: "imap.gmail.com"
+        - name: MAIL_PORT
+          value: "993"
+        - name: MAIL_TLS
+          value: "true"
+        - name: MAIL_USER
+          value: "your-imap-username@gmail.com"
+        - name: MAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: email-monitor-secrets
+              key: MAIL_PASSWORD
+        - name: MAIL_REJECT_UNAUTHORIZED
+          value: "true"
+        - name: MAIL_FROM
+          value: "your-smtp-username@gmail.com"
+        - name: MAIL_TO
+          value: "your-imap-username@gmail.com"
+        
+        # Uptime Kuma Configuration
+        - name: KUMA_ENABLED
+          value: "true"
+        - name: KUMA_SERVER
+          value: "https://your-uptime-kuma-server.com"
+        - name: KUMA_IDENTIFIER
+          value: "your-push-monitor-id"
+        - name: KUMA_TIMEOUT
+          value: "10000"
+        - name: KUMA_RETRIES
+          value: "3"
+        
+        # Monitoring Configuration
+        - name: SEND_INTERVAL
+          value: "5"
+        - name: RECEIVE_TIMEOUT
+          value: "1"
+        - name: RETRIES
+          value: "3"
+        
+        # Health Check Configuration
+        - name: HEALTH_CHECK_ENABLED
+          value: "true"
+        - name: HEALTH_CHECK_PORT
+          value: "3000"
+        
+        # Timezone
+        - name: TZ
+          value: "UTC"
+        
+        ports:
+        - containerPort: 3000
+          name: health
+        
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+        
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        
+        livenessProbe:
+          exec:
+            command:
+            - node
+            - healthcheck.js
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          exec:
+            command:
+            - node
+            - healthcheck.js
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 2
+      
+      volumes:
+      - name: config-volume
+        configMap:
+          name: email-monitor-config
+      
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: email-monitor-service
+  namespace: monitoring
+  labels:
+    app: email-monitor
+spec:
+  selector:
+    app: email-monitor
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: health
+  type: ClusterIP

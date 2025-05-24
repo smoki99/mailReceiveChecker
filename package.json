@@ -1,0 +1,38 @@
+{
+  "name": "email-monitor",
+  "version": "1.0.0",
+  "description": "Email delivery monitoring tool with Uptime Kuma integration - Docker Ready",
+  "main": "email-monitor.js",
+  "scripts": {
+    "start": "node email-monitor.js",
+    "dev": "NODE_ENV=development DEBUG=true node email-monitor.js",
+    "test": "node test.js",
+    "docker:build": "docker build -t email-monitor:latest .",
+    "docker:run": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "docker:logs": "docker-compose logs -f email-monitor",
+    "setup": "cp .env.temp .env && echo 'Please edit .env with your configuration'"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.0",
+    "imap": "^0.8.19",
+    "poplib": "^0.1.7",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "keywords": [
+    "email",
+    "monitoring",
+    "smtp",
+    "imap",
+    "pop3",
+    "uptime-kuma",
+    "docker",
+    "kubernetes"
+  ],
+  "author": "smoki99",
+  "license": "MIT"
+}
